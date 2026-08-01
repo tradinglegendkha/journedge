@@ -48,4 +48,4 @@ public/uploads/
 
 
 # backups (should be kept secret)
-/backups/
+/backups/prisma/prisma/
