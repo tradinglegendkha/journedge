@@ -9,13 +9,14 @@ import { parseTDAmeritradeCSV, isTDAmeritradeCSV }  from "../lib/parseTDAmeritra
 import { parseTastytradeCSV, isTastytradeCSV }      from "../lib/parseTastytradeCSV";
 import { parseIBKRCSV, isIBKRCSV }                 from "../lib/parseIBKRCSV";
 import { parseThinkorswimCSV, isThinkorswimCSV }    from "../lib/parseThinkorswimCSV";
+import { parseTradovateCSV, isTradovateCSV }         from "../lib/parseTradovateCSV";
 import {
   Upload, CheckCircle, AlertCircle, FileText,
   ArrowRight, X, Database, RefreshCw,
 } from "lucide-react";
 
 type ParseStatus = "idle" | "success" | "error" | "importing";
-type BrokerSource = "Journedge" | "fidelity" | "schwab" | "tdameritrade" | "tastytrade" | "ibkr" | "thinkorswim";
+type BrokerSource = "Journedge" | "fidelity" | "schwab" | "tdameritrade" | "tastytrade" | "ibkr" | "thinkorswim" | "tradovate";
 
 interface ParseResult {
   trades: Trade[];
@@ -31,6 +32,7 @@ const BADGE_CONFIG: Record<BrokerSource, { label: string; color: string; bg: str
   tastytrade:   { label: "Tastytrade CSV",      color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)" },
   ibkr:         { label: "IBKR Activity CSV",   color: "#f472b6", bg: "rgba(244,114,182,0.12)", border: "rgba(244,114,182,0.3)" },
   thinkorswim:  { label: "thinkorswim CSV",     color: "#22d3ee", bg: "rgba(34,211,238,0.12)",  border: "rgba(34,211,238,0.3)"  },
+  tradovate:    { label: "Tradovate CSV",       color: "#fbbf24", bg: "rgba(251,191,36,0.12)",  border: "rgba(251,191,36,0.3)"  },
 };
 
 function FormatBadge({ source }: { source: BrokerSource }) {
@@ -54,6 +56,7 @@ function detectAndParse(text: string): { trades: Trade[]; source: BrokerSource }
   if (isTastytradeCSV(text))   return { trades: parseTastytradeCSV(text),   source: "tastytrade"   };
   if (isTDAmeritradeCSV(text)) return { trades: parseTDAmeritradeCSV(text), source: "tdameritrade" };
   if (isIBKRCSV(text))         return { trades: parseIBKRCSV(text),         source: "ibkr"         };
+  if (isTradovateCSV(text))    return { trades: parseTradovateCSV(text),    source: "tradovate"    };
   return { trades: parseFidelityCSV(text), source: "fidelity" };
 }
 
@@ -92,6 +95,11 @@ const BROKER_CARDS = [
     label: "thinkorswim",
     desc:  "Upload a thinkorswim Account Statement export (Monitor → Activity and Positions → Statements → Export to CSV). This includes exact fill times unlike Schwab's Realized Gain/Loss export.",
     color: "#22d3ee", bg: "rgba(34,211,238,0.06)", border: "rgba(34,211,238,0.2)",
+},
+  {
+   label: "Tradovate",
+   desc:  "Upload a Tradovate Performance CSV (Reports → Performance → Export). Futures only — direction is inferred from fill order since the export doesn't label open/close legs.",
+   color: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.2)",
 },
 ];
 
