@@ -161,6 +161,8 @@ export function parseTradovateCSV(csvText: string): Trade[] {
     const trade: Trade = {
       id: `tradovate-${buyFillId}-${sellFillId}`,
       date: exitTs.dateISO,
+      entryDate: entryTs.dateISO,
+      exitDate: exitTs.dateISO,
       symbol,
       underlying,
       type: "future",

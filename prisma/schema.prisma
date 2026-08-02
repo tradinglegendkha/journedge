@@ -21,6 +21,8 @@ model Account {
 model Trade {
   id           String     @id
   date         String
+  entryDate    String?
+  exitDate     String?
   symbol       String
   underlying   String
   type         String

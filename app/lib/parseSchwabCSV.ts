@@ -190,6 +190,8 @@ export function parseSchwabCSV(csvText: string): Trade[] {
     trades.push({
       id: `schwab-${group.symbol}-${group.openDate}-${group.closeDate}-${group.quantity}-${group.seq}`,
       date: normalizeDate(group.closeDate),
+      entryDate: normalizeDate(group.openDate),
+      exitDate: normalizeDate(group.closeDate),
       symbol: cleanSymbol,
       underlying: group.optionDetails?.underlying ?? group.symbol,
       type: group.optionDetails ? "option" : "stock",

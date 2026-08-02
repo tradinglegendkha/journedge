@@ -81,6 +81,7 @@ export default function AddTradeModal({ onClose }: Props) {
   const [strike, setStrike]         = useState("");
   const [expiry, setExpiry]         = useState("");
   const [date, setDate]             = useState(new Date().toLocaleDateString("en-US"));
+  const [exitDate, setExitDate]     = useState(new Date().toLocaleDateString("en-US"));
   const [entryTime, setEntryTime]   = useState("");
   const [exitTime, setExitTime]     = useState("");
   const [entryPrice, setEntryPrice] = useState("");
@@ -141,6 +142,8 @@ export default function AddTradeModal({ onClose }: Props) {
     const trade: Trade = {
       id: `manual-${Date.now()}`,
       date,
+      entryDate: date,
+      exitDate: exitDate || date,
       symbol: symbol.replace(/^-/, "").toUpperCase(),
       underlying: underlying || symbol.toUpperCase(),
       type,
@@ -277,8 +280,13 @@ export default function AddTradeModal({ onClose }: Props) {
             </div>
 
             <div>
-              <label style={labelStyle}>Date</label>
+              <label style={labelStyle}>Date (Entry)</label>
               <input value={date} onChange={(e) => setDate(e.target.value)} placeholder="MM/DD/YYYY" style={inputStyle} />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Exit Date</label>
+              <input value={exitDate} onChange={(e) => setExitDate(e.target.value)} placeholder="MM/DD/YYYY (same as entry for day trades)" style={inputStyle} />
             </div>
 
             <div>

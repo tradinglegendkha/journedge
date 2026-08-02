@@ -145,6 +145,8 @@ export function parseTDAmeritradeCSV(csvText: string): Trade[] {
       const trade: Trade = {
         id: `tda-${symbol}-${normalizeDate(buy.date)}-${entryPrice}-${exitPrice}-${Math.random().toString(36).slice(2, 7)}`,
         date:       normalizeDate(sell.date || buy.date),
+        entryDate:  normalizeDate(buy.date),
+        exitDate:   normalizeDate(sell.date || buy.date),
         symbol:     symbol.replace(/^\./, ""),
         underlying,
         type,

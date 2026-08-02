@@ -238,14 +238,15 @@ export default function SettingsPage() {
   const handleExport = () => {
     if (trades.length === 0) return;
     const headers = [
-      "Date", "Symbol", "Underlying", "Type", "Direction",
+      "Date", "Entry Date", "Exit Date", "Symbol", "Underlying", "Type", "Direction",
       "Option Type", "Strike", "Expiry", "Quantity",
       "Entry Price", "Exit Price", "Commission", "Fees",
       "P&L", "Status", "Entry Time", "Exit Time", "R:R",
       "Tags", "Journal", "Account ID",
     ];
     const rows = trades.map((t) => [
-      t.date, t.symbol, t.underlying, t.type, t.direction,
+      t.date, t.entryDate || t.date, t.exitDate || t.date,
+      t.symbol, t.underlying, t.type, t.direction,
       t.optionType || "", t.strike || "", t.expiry || "",
       t.quantity, t.entryPrice, t.exitPrice, t.commission, t.fees,
       t.pnl, t.status, t.entryTime || "", t.exitTime || "", t.rr || "",

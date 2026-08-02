@@ -159,6 +159,8 @@ export function parseTastytradeCSV(csvText: string): Trade[] {
         const trade: Trade = {
           id: `tasty-${symbol}-${open.date}-${entryPrice}-${exitPrice}-${Math.random().toString(36).slice(2, 7)}`,
           date:       open.date,
+          entryDate:  open.date,
+          exitDate:   close.date,
           symbol,
           underlying: open.underlying || symbol,
           type:       tradeType,

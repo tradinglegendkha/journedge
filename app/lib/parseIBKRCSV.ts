@@ -145,6 +145,8 @@ export function parseIBKRCSV(csvText: string): Trade[] {
       trades.push({
         id: `ibkr-${symbol.trim()}-${sell.date}-${entryPrice}-${exitPrice}-${Math.random().toString(36).slice(2, 7)}`,
         date:       sell.date || buy.date,
+        entryDate:  buy.date,
+        exitDate:   sell.date || buy.date,
         symbol:     symbol.trim(),
         underlying,
         type,

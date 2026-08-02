@@ -219,23 +219,23 @@ function ExpandedTradeDetails({ trade }: { trade: Trade }) {
     label: string;
     value: unknown;
   }> = [
-    { key: "date", label: "Date", value: trade.date },
+    { key: "date", label: "Entry Date", value: trade.entryDate || trade.date },
     { key: "symbol", label: "Contract", value: trade.symbol },
+    { key: "entryPrice", label: "Entry Price", value: trade.entryPrice },
+    { key: "direction", label: "Direction", value: trade.direction.toUpperCase() },
+    { key: "expiry", label: "Expiry", value: trade.expiry },
+    { key: "quantity", label: "Quantity", value: trade.quantity },
+    { key: "exitDate", label: "Exit Date", value: trade.exitDate || trade.date },
     {
       key: "type",
       label: "Type",
       value: trade.optionType
-        ? trade.optionType.toUpperCase()
-        : trade.type.toUpperCase(),
+      ? trade.optionType.toUpperCase()
+      : trade.type.toUpperCase(),
     },
-    { key: "direction", label: "Direction", value: trade.direction },
-    { key: "strike", label: "Strike", value: trade.strike },
-    { key: "expiry", label: "Expiry", value: trade.expiry },
-    { key: "quantity", label: "Quantity", value: trade.quantity },
-    { key: "entryPrice", label: "Entry Price", value: trade.entryPrice },
     { key: "exitPrice", label: "Exit Price", value: trade.exitPrice },
-    { key: "pnl", label: "P&L", value: trade.pnl },
     { key: "status", label: "Status", value: trade.status.toUpperCase() },
+    { key: "strike", label: "Strike", value: trade.strike },
     { key: "accountId", label: "Account", value: trade.accountId },
   ];
 

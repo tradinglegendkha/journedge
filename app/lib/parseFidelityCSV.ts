@@ -125,6 +125,8 @@ export function parseFidelityCSV(csvText: string): Trade[] {
       const trade: Trade = {
         id: `${symbol}-${buy.date}-${i}`,
         date: buy.date,
+        entryDate: buy.date,
+        exitDate: sell.date,
         symbol: symbol.replace(/^-/, ""),
         underlying,
         type,

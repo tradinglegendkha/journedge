@@ -1,6 +1,12 @@
 export interface Trade {
   id: string;
   date: string;
+  /** Date the position was opened. Falls back to `date` for older records
+   * imported before entryDate/exitDate existed. */
+  entryDate?: string;
+  /** Date the position was closed. For swing trades this will differ from
+   * entryDate; falls back to `date` for older records. */
+  exitDate?: string;
   symbol: string;
   underlying: string;
   type: string;

@@ -233,6 +233,8 @@ export function parseThinkorswimCSV(csvText: string): Trade[] {
         const trade: Trade = {
           id: `tos-${open.symbol}-${open.date}-${entryPrice}-${exitPrice}-${Math.random().toString(36).slice(2, 7)}`,
           date:       close.date || open.date,
+          entryDate:  open.date,
+          exitDate:   close.date || open.date,
           symbol:     open.symbol,
           underlying: open.symbol,
           type,
