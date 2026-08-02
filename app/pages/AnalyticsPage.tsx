@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie,
@@ -8,7 +8,7 @@ import {
 import { useApp } from "../context/AppContext";
 import {
   TrendingUp, TrendingDown, Target, Zap, Award, Clock,
-  BarChart2, Activity, AlertTriangle, Calendar, Shield, Brain,
+  BarChart2, Activity, AlertTriangle, Calendar, Shield, Brain, X,
 } from "lucide-react";
 import { Trade } from "../lib/types";
 
@@ -273,7 +273,58 @@ export default function AnalyticsPage() {
   const GREEN = "#00e57a";
   const RED = "#d11d2c";
 
+  // Earliest trade date across the account's full history — the default lower bound
+  const earliestDate = useMemo(() => {
+    if (trades.length === 0) return "";
+    return trades.reduce((min, t) => {
+      const d = normalizeDate(t.date);
+      return !min || d < min ? d : min;
+    }, "" as string);
+  }, [trades]);
+
+  // Draft inputs (what's typed/picked) vs applied range (what's actually filtering) —
+  // kept separate so the filter only takes effect when "Go" is clicked.
+  const [dateFrom, setDateFrom]       = useState("");
+  const [dateTo, setDateTo]           = useState("");
+  const [appliedFrom, setAppliedFrom] = useState("");
+  const [appliedTo, setAppliedTo]     = useState("");
+
+  // Default to "everything" — from the very first trade — once trades have loaded.
+  // Only runs once (guarded by appliedFrom being unset) so it never stomps on a
+  // filter the user has already applied.
+  useEffect(() => {
+    if (earliestDate && !appliedFrom) {
+      setDateFrom(earliestDate);
+      setAppliedFrom(earliestDate);
+    }
+  }, [earliestDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const applyDateFilter = () => {
+    setAppliedFrom(dateFrom);
+    setAppliedTo(dateTo);
+  };
+
+  const resetDateFilter = () => {
+    setDateFrom(earliestDate);
+    setDateTo("");
+    setAppliedFrom(earliestDate);
+    setAppliedTo("");
+  };
+
+  const isDateFiltered = appliedFrom !== earliestDate || appliedTo !== "";
+
+  const filteredTrades = useMemo(() => {
+    if (!appliedFrom && !appliedTo) return trades;
+    return trades.filter((t) => {
+      const d = normalizeDate(t.date);
+      if (appliedFrom && d < appliedFrom) return false;
+      if (appliedTo   && d > appliedTo)   return false;
+      return true;
+    });
+  }, [trades, appliedFrom, appliedTo]);
+
   const stats = useMemo(() => {
+    const trades = filteredTrades; // shadowed on purpose — everything below already reads `trades`
     if (trades.length === 0) return null;
 
     const sorted = [...trades].sort((a, b) =>
@@ -444,7 +495,7 @@ export default function AnalyticsPage() {
       hasMaeMfe, avgMae, avgMfe, entryEff, exitEff, tradeEff, maeMfeChart, maeFdCount: maeFdTrades.length,
       overtradingDays, revengeCount, disciplineScore, meanDailyTrades, maxDayTrades, sdDailyTrades, zeroOffset,
     };
-  }, [trades, activeAccount]);
+  }, [filteredTrades, activeAccount]);
 
   // RoR interactive — outside useMemo
   const rorData = (() => {
@@ -476,11 +527,17 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (!stats) return null;
-
   const rorColor = rorData
     ? rorData.ror < 5 ? "#00e57a" : rorData.ror < 20 ? "#fbbf24" : "#ff4d6a"
     : "#8888aa";
+
+  const dateInputStyle: React.CSSProperties = {
+    padding: "7px 10px", borderRadius: "8px",
+    border: "1px solid var(--border)", background: "var(--bg-card)",
+    color: "var(--text-primary)", fontSize: "12px",
+    fontFamily: "'DM Sans', sans-serif", colorScheme: "dark",
+    outline: "none",
+  };
 
   return (
     <div>
@@ -489,21 +546,92 @@ export default function AnalyticsPage() {
           Analytics
         </h2>
         <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>
-          {trades.length} trades · {stats.tradingDays} trading days
+          {filteredTrades.length} trades · {stats ? stats.tradingDays : 0} trading days
         </p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "4px", marginBottom: "24px", background: "var(--bg-card)", borderRadius: "10px", padding: "4px", border: "1px solid var(--border)", width: "fit-content", flexWrap: "wrap" }}>
-        <Tab label="Overview"    active={activeTab === "overview"}    onClick={() => setActiveTab("overview")} />
-        <Tab label="Risk"        active={activeTab === "risk"}        onClick={() => setActiveTab("risk")} />
-        <Tab label="Time"        active={activeTab === "time"}        onClick={() => setActiveTab("time")} />
-        <Tab label="Heatmap"     active={activeTab === "heatmap"}     onClick={() => setActiveTab("heatmap")} />
-        <Tab label="R-Multiples" active={activeTab === "rmultiples"}  onClick={() => setActiveTab("rmultiples")} />
-        <Tab label="Execution"   active={activeTab === "execution"}   onClick={() => setActiveTab("execution")} />
-        <Tab label="Behavior"    active={activeTab === "behavior"}    onClick={() => setActiveTab("behavior")} />
+      {/* Tabs + date range filter */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+        <div style={{ display: "flex", gap: "4px", background: "var(--bg-card)", borderRadius: "10px", padding: "4px", border: "1px solid var(--border)", width: "fit-content", flexWrap: "wrap" }}>
+          <Tab label="Overview"    active={activeTab === "overview"}    onClick={() => setActiveTab("overview")} />
+          <Tab label="Risk"        active={activeTab === "risk"}        onClick={() => setActiveTab("risk")} />
+          <Tab label="Time"        active={activeTab === "time"}        onClick={() => setActiveTab("time")} />
+          <Tab label="Heatmap"     active={activeTab === "heatmap"}     onClick={() => setActiveTab("heatmap")} />
+          <Tab label="R-Multiples" active={activeTab === "rmultiples"}  onClick={() => setActiveTab("rmultiples")} />
+          <Tab label="Execution"   active={activeTab === "execution"}   onClick={() => setActiveTab("execution")} />
+          <Tab label="Behavior"    active={activeTab === "behavior"}    onClick={() => setActiveTab("behavior")} />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <Calendar size={13} color="var(--text-muted)" />
+          <input
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => setDateFrom(e.target.value)}
+            style={dateInputStyle}
+          />
+          <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>to</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => setDateTo(e.target.value)}
+            style={dateInputStyle}
+          />
+          <button
+            onClick={applyDateFilter}
+            style={{
+              padding: "7px 16px", borderRadius: "8px", border: "none",
+              background: "var(--accent-green)", color: "#000",
+              fontSize: "12px", fontWeight: "700", cursor: "pointer",
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            Go
+          </button>
+          {isDateFiltered && (
+            <button
+              onClick={resetDateFilter}
+              title="Reset to full history"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: "28px", height: "28px", borderRadius: "8px",
+                border: "1px solid var(--border)", background: "transparent",
+                color: "var(--text-muted)", cursor: "pointer",
+              }}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
+      {!stats ? (
+        <div style={{
+          background: "var(--bg-card)", border: "1px dashed var(--border)",
+          borderRadius: "16px", padding: "60px", textAlign: "center",
+        }}>
+          <h3 style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "8px" }}>
+            No trades in this date range
+          </h3>
+          <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "20px" }}>
+            Try widening the date filter above.
+          </p>
+          <button
+            onClick={resetDateFilter}
+            style={{
+              padding: "10px 20px", borderRadius: "8px", border: "none",
+              background: "var(--accent-green)", color: "#000",
+              fontSize: "13px", fontWeight: "700", cursor: "pointer",
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            Reset to full history
+          </button>
+        </div>
+      ) : (
+      <>
       {/* Overview */}
       {activeTab === "overview" && (
         <>
@@ -628,7 +756,7 @@ export default function AnalyticsPage() {
               icon={Activity}
               sub={stats.streak.currentType === "win" ? "Winning" : stats.streak.currentType === "loss" ? "Losing" : "—"}
             />
-            <MetricCard label="Trades / Day" value={(trades.length / Math.max(stats.tradingDays, 1)).toFixed(1)} neutral icon={Clock} sub="Avg per trading day" />
+            <MetricCard label="Trades / Day" value={(filteredTrades.length / Math.max(stats.tradingDays, 1)).toFixed(1)} neutral icon={Clock} sub="Avg per trading day" />
           </div>
         </>
       )}
@@ -800,10 +928,10 @@ export default function AnalyticsPage() {
                 const best  = stats.hourData.reduce((b, h) => h.totalPnl > b.totalPnl ? h : b, stats.hourData[0]);
                 const worst = stats.hourData.reduce((w, h) => h.totalPnl < w.totalPnl ? h : w, stats.hourData[0]);
                 const busiest = stats.hourData.reduce((b, h) => h.count > b.count ? h : b, stats.hourData[0]);
-                const withTime = trades.filter((t) => t.hourOfDay != null).length;
+                const withTime = filteredTrades.filter((t) => t.hourOfDay != null).length;
                 return (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "24px" }}>
-                    <MetricCard label="Hours Tracked"  value={String(stats.hourData.length)}     neutral icon={Clock}       sub={`${withTime} of ${trades.length} trades`} />
+                    <MetricCard label="Hours Tracked"  value={String(stats.hourData.length)}     neutral icon={Clock}       sub={`${withTime} of ${filteredTrades.length} trades`} />
                     <MetricCard label="Best Hour"      value={best.label}                         positive icon={TrendingUp}  sub={`+$${best.totalPnl.toFixed(0)} · ${best.winRate}% WR`} />
                     <MetricCard label="Worst Hour"     value={worst.label}                        positive={false} icon={TrendingDown} sub={`$${worst.totalPnl.toFixed(0)} · ${worst.winRate}% WR`} />
                     <MetricCard label="Busiest Hour"   value={busiest.label}                      neutral icon={BarChart2}   sub={`${busiest.count} trades`} />
@@ -991,7 +1119,7 @@ export default function AnalyticsPage() {
           ) : (
             <>
               <div style={{ marginBottom: "12px", fontSize: "12px", color: "var(--text-muted)" }}>
-                {stats.maeFdCount} of {trades.length} trades have MAE/MFE logged
+                {stats.maeFdCount} of {filteredTrades.length} trades have MAE/MFE logged
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "20px" }}>
                 <MetricCard label="Avg MAE"          value={`$${stats.avgMae.toFixed(2)}`}    positive={false} icon={TrendingDown} sub="Avg worst excursion" />
@@ -1194,6 +1322,8 @@ export default function AnalyticsPage() {
             </p>
           </div>
         </>
+      )}
+      </>
       )}
     </div>
   );
