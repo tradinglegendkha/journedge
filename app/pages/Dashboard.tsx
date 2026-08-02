@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import {
   TrendingUp, TrendingDown, Target, Zap, Upload, Search, X,
   ChevronDown, ShieldCheck, ShieldAlert, Trash2,
@@ -179,10 +179,122 @@ function SelectWrap({ children }: { children: React.ReactNode }) {
   );
 }
 
+
+function formatTradeFieldValue(key: string, value: unknown) {
+  if (value === null || value === undefined || value === "") return "—";
+
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(", ") : "—";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  const moneyFields = new Set([
+    "entryPrice", "exitPrice", "pnl", "fees", "commission",
+    "maxProfit", "maxLoss",
+  ]);
+
+  if (moneyFields.has(key) && typeof value === "number") {
+    const sign = key === "pnl" && value > 0 ? "+" : "";
+    return `${sign}$${value.toFixed(2)}`;
+  }
+
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "[Unable to display]";
+    }
+  }
+
+  return String(value);
+}
+
+function ExpandedTradeDetails({ trade }: { trade: Trade }) {
+  // Only the fields listed here are rendered in the dropdown.
+  const detailFields: Array<{
+    key: string;
+    label: string;
+    value: unknown;
+  }> = [
+    { key: "date", label: "Date", value: trade.date },
+    { key: "symbol", label: "Contract", value: trade.symbol },
+    {
+      key: "type",
+      label: "Type",
+      value: trade.optionType
+        ? trade.optionType.toUpperCase()
+        : trade.type.toUpperCase(),
+    },
+    { key: "direction", label: "Direction", value: trade.direction },
+    { key: "strike", label: "Strike", value: trade.strike },
+    { key: "expiry", label: "Expiry", value: trade.expiry },
+    { key: "quantity", label: "Quantity", value: trade.quantity },
+    { key: "entryPrice", label: "Entry Price", value: trade.entryPrice },
+    { key: "exitPrice", label: "Exit Price", value: trade.exitPrice },
+    { key: "pnl", label: "P&L", value: trade.pnl },
+    { key: "status", label: "Status", value: trade.status.toUpperCase() },
+    { key: "accountId", label: "Account", value: trade.accountId },
+  ];
+
+  return (
+    <tr>
+      <td
+        colSpan={11}
+        style={{
+          padding: 0,
+          background: "var(--bg-secondary)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div style={{ padding: "18px 24px 22px" }}>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+            gap: "12px",
+          }}>
+            {detailFields.map(({ key, label, value }) => (
+              <div
+                key={key}
+                style={{
+                  minWidth: 0,
+                  padding: "12px 14px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "9px",
+                  background: "var(--bg-card)",
+                }}
+              >
+                <div style={{
+                  color: "var(--text-muted)", fontSize: "10px", fontWeight: "700",
+                  letterSpacing: "0.4px", marginBottom: "5px",
+                }}>
+                  {label}
+                </div>
+                <div style={{
+                  color: key === "pnl"
+                    ? trade.pnl >= 0 ? "#00e57a" : "#ff4d6a"
+                    : "var(--text-primary)",
+                  fontSize: "13px", fontWeight: key === "pnl" ? "700" : "500",
+                  overflowWrap: "anywhere", whiteSpace: "pre-wrap",
+                }}>
+                  {formatTradeFieldValue(key, value)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 interface Props { onAddTrade: () => void; }
 
 export default function Dashboard({ onAddTrade }: Props) {
-  const { trades, setActivePage, setSelectedTrade, deleteTrade } = useApp();
+  const { trades, setActivePage, deleteTrade } = useApp();
 
   const [search, setSearch]             = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -191,6 +303,7 @@ export default function Dashboard({ onAddTrade }: Props) {
   const [filterFrom, setFilterFrom]     = useState("");
   const [filterTo, setFilterTo]         = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
 
   const symbols = useMemo(() => {
     const set = new Set(trades.map((t) => t.underlying));
@@ -258,6 +371,7 @@ export default function Dashboard({ onAddTrade }: Props) {
     }
     await deleteTrade(id);
     setConfirmDeleteId(null);
+    setExpandedTradeId((currentId) => currentId === id ? null : currentId);
   };
 
   return (
@@ -433,7 +547,7 @@ export default function Dashboard({ onAddTrade }: Props) {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
-                    {["Date", "Symbol", "Type", "Strike", "Expiry", "Qty", "Entry", "Exit", "P&L", "Status", ""].map((h) => (
+                    {["Date", "Symbol", "Type", "Entry", "Exit", "Qty", "Entry", "Exit", "P&L", "Status", ""].map((h) => (
                       <th key={h} style={{
                         padding: "10px 16px", textAlign: "left",
                         color: "var(--text-muted)", fontWeight: "600", whiteSpace: "nowrap",
@@ -444,78 +558,109 @@ export default function Dashboard({ onAddTrade }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((trade: Trade) => (
-                    <tr
-                      key={trade.id}
-                      onClick={() => setSelectedTrade(trade)}
-                      style={{ borderBottom: "1px solid var(--border)", cursor: "pointer" }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-hover)"}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        if (confirmDeleteId === trade.id) setConfirmDeleteId(null);
-                      }}
-                    >
-                      <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.date}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-primary)", fontWeight: "700" }}>{trade.underlying}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{
-                          padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600",
-                          background: trade.optionType === "call" ? "rgba(77,159,255,0.15)" : "rgba(255,77,106,0.15)",
-                          color: trade.optionType === "call" ? "#4d9fff" : "#ff4d6a",
-                        }}>
-                          {trade.optionType ? trade.optionType.toUpperCase() : trade.type.toUpperCase()}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.strike ? `$${trade.strike}` : "—"}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.expiry || "—"}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.quantity}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>${trade.entryPrice}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>${trade.exitPrice}</td>
-                      <td style={{ padding: "12px 16px", fontWeight: "700", color: trade.pnl >= 0 ? "#00e57a" : "#ff4d6a" }}>
-                        {trade.pnl >= 0 ? "+" : ""}${trade.pnl}
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{
-                          padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600",
-                          background: trade.status === "win"
-                            ? "rgba(0,229,122,0.12)"
-                            : trade.status === "loss"
-                            ? "rgba(255,77,106,0.12)"
-                            : "rgba(136,136,170,0.12)",
-                          color: trade.status === "win" ? "#00e57a" : trade.status === "loss" ? "#ff4d6a" : "#8888aa",
-                        }}>
-                          {trade.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td style={{ padding: "8px 12px", width: "48px" }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(trade.id); }}
-                          title={confirmDeleteId === trade.id ? "Click again to confirm" : "Delete trade"}
+                  {filtered.map((trade: Trade) => {
+                    const isExpanded = expandedTradeId === trade.id;
+
+                    return (
+                      <Fragment key={trade.id}>
+                        <tr
+                          onClick={() => setExpandedTradeId(isExpanded ? null : trade.id)}
+                          aria-expanded={isExpanded}
                           style={{
-                            background: confirmDeleteId === trade.id ? "rgba(255,77,106,0.15)" : "transparent",
-                            border: `1px solid ${confirmDeleteId === trade.id ? "#ff4d6a" : "transparent"}`,
-                            borderRadius: "6px", padding: "5px 7px", cursor: "pointer",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            transition: "all 0.15s",
+                            borderBottom: isExpanded ? "none" : "1px solid var(--border)",
+                            cursor: "pointer",
+                            background: isExpanded ? "rgba(255,255,255,0.025)" : "transparent",
                           }}
                           onMouseEnter={(e) => {
-                            if (confirmDeleteId !== trade.id) {
-                              e.currentTarget.style.background = "rgba(255,77,106,0.1)";
-                              e.currentTarget.style.borderColor = "rgba(255,77,106,0.4)";
-                            }
+                            e.currentTarget.style.background = "var(--bg-hover)";
                           }}
                           onMouseLeave={(e) => {
-                            if (confirmDeleteId !== trade.id) {
-                              e.currentTarget.style.background = "transparent";
-                              e.currentTarget.style.borderColor = "transparent";
-                            }
+                            e.currentTarget.style.background = isExpanded
+                              ? "rgba(255,255,255,0.025)"
+                              : "transparent";
+                            if (confirmDeleteId === trade.id) setConfirmDeleteId(null);
                           }}
                         >
-                          <Trash2 size={13} color={confirmDeleteId === trade.id ? "#ff4d6a" : "#8888aa"} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                          <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.date}</td>
+                          <td style={{ padding: "12px 16px", color: "var(--text-primary)", fontWeight: "700" }}>{trade.underlying}</td>
+                          <td style={{ padding: "12px 16px" }}>
+                            <span style={{
+                              padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600",
+                              background: trade.optionType === "call" ? "rgba(77,159,255,0.15)" : "rgba(255,77,106,0.15)",
+                              color: trade.optionType === "call" ? "#4d9fff" : "#ff4d6a",
+                            }}>
+                              {trade.optionType ? trade.optionType.toUpperCase() : trade.type.toUpperCase()}
+                            </span>
+                          </td>
+                          {/* <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.strike ? `$${trade.strike}` : "—"}</td>
+                          <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.expiry || "—"}</td> */}
+                          <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.entryTime || "—"}</td>
+                          <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.exitTime || "—"}</td>
+                          <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{trade.quantity}</td>
+                          <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>${trade.entryPrice}</td>
+                          <td style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>${trade.exitPrice}</td>
+                          <td style={{ padding: "12px 16px", fontWeight: "700", color: trade.pnl >= 0 ? "#00e57a" : "#ff4d6a" }}>
+                            {trade.pnl >= 0 ? "+" : ""}${trade.pnl}
+                          </td>
+                          <td style={{ padding: "12px 16px" }}>
+                            <span style={{
+                              padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600",
+                              background: trade.status === "win"
+                                ? "rgba(0,229,122,0.12)"
+                                : trade.status === "loss"
+                                ? "rgba(255,77,106,0.12)"
+                                : "rgba(136,136,170,0.12)",
+                              color: trade.status === "win" ? "#00e57a" : trade.status === "loss" ? "#ff4d6a" : "#8888aa",
+                            }}>
+                              {trade.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td style={{ padding: "8px 12px", width: "84px" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px" }}>
+                              <ChevronDown
+                                size={15}
+                                color="#8888aa"
+                                aria-hidden="true"
+                                style={{
+                                  transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                                  transition: "transform 0.2s ease",
+                                  flexShrink: 0,
+                                }}
+                              />
+
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDelete(trade.id); }}
+                                title={confirmDeleteId === trade.id ? "Click again to confirm" : "Delete trade"}
+                                style={{
+                                  background: confirmDeleteId === trade.id ? "rgba(255,77,106,0.15)" : "transparent",
+                                  border: `1px solid ${confirmDeleteId === trade.id ? "#ff4d6a" : "transparent"}`,
+                                  borderRadius: "6px", padding: "5px 7px", cursor: "pointer",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  transition: "all 0.15s",
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (confirmDeleteId !== trade.id) {
+                                    e.currentTarget.style.background = "rgba(255,77,106,0.1)";
+                                    e.currentTarget.style.borderColor = "rgba(255,77,106,0.4)";
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (confirmDeleteId !== trade.id) {
+                                    e.currentTarget.style.background = "transparent";
+                                    e.currentTarget.style.borderColor = "transparent";
+                                  }
+                                }}
+                              >
+                                <Trash2 size={13} color={confirmDeleteId === trade.id ? "#ff4d6a" : "#8888aa"} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {isExpanded && <ExpandedTradeDetails trade={trade} />}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -92,7 +92,7 @@ const BROKER_CARDS = [
     color: "#f472b6", bg: "rgba(244,114,182,0.06)", border: "rgba(244,114,182,0.2)",
   },
   {
-    label: "thinkorswim",
+    label: "Thinkorswim",
     desc:  "Upload a thinkorswim Account Statement export (Monitor → Activity and Positions → Statements → Export to CSV). This includes exact fill times unlike Schwab's Realized Gain/Loss export.",
     color: "#22d3ee", bg: "rgba(34,211,238,0.06)", border: "rgba(34,211,238,0.2)",
 },

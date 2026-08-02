@@ -282,46 +282,33 @@ export default function AnalyticsPage() {
     }, "" as string);
   }, [trades]);
 
-  // Draft inputs (what's typed/picked) vs applied range (what's actually filtering) —
-  // kept separate so the filter only takes effect when "Go" is clicked.
-  const [dateFrom, setDateFrom]       = useState("");
-  const [dateTo, setDateTo]           = useState("");
-  const [appliedFrom, setAppliedFrom] = useState("");
-  const [appliedTo, setAppliedTo]     = useState("");
+  // Date filter applies automatically whenever either date changes.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
 
   // Default to "everything" — from the very first trade — once trades have loaded.
-  // Only runs once (guarded by appliedFrom being unset) so it never stomps on a
-  // filter the user has already applied.
   useEffect(() => {
-    if (earliestDate && !appliedFrom) {
+    if (earliestDate) {
       setDateFrom(earliestDate);
-      setAppliedFrom(earliestDate);
     }
-  }, [earliestDate]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const applyDateFilter = () => {
-    setAppliedFrom(dateFrom);
-    setAppliedTo(dateTo);
-  };
+  }, [earliestDate]);
 
   const resetDateFilter = () => {
     setDateFrom(earliestDate);
     setDateTo("");
-    setAppliedFrom(earliestDate);
-    setAppliedTo("");
   };
 
-  const isDateFiltered = appliedFrom !== earliestDate || appliedTo !== "";
+  const isDateFiltered = dateFrom !== earliestDate || dateTo !== "";
 
   const filteredTrades = useMemo(() => {
-    if (!appliedFrom && !appliedTo) return trades;
+    if (!dateFrom && !dateTo) return trades;
     return trades.filter((t) => {
       const d = normalizeDate(t.date);
-      if (appliedFrom && d < appliedFrom) return false;
-      if (appliedTo   && d > appliedTo)   return false;
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo   && d > dateTo)   return false;
       return true;
     });
-  }, [trades, appliedFrom, appliedTo]);
+  }, [trades, dateFrom, dateTo]);
 
   const stats = useMemo(() => {
     const trades = filteredTrades; // shadowed on purpose — everything below already reads `trades`
@@ -579,17 +566,6 @@ export default function AnalyticsPage() {
             onChange={(e) => setDateTo(e.target.value)}
             style={dateInputStyle}
           />
-          <button
-            onClick={applyDateFilter}
-            style={{
-              padding: "7px 16px", borderRadius: "8px", border: "none",
-              background: "var(--accent-green)", color: "#000",
-              fontSize: "12px", fontWeight: "700", cursor: "pointer",
-              fontFamily: "'DM Sans', sans-serif",
-            }}
-          >
-            Go
-          </button>
           {isDateFiltered && (
             <button
               onClick={resetDateFilter}
